@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "id": "beck-bdi-i-uk",
+      "slug": "beck-bdi-i-uk",
+      "title": "Шкала депресії Бека",
+      "shortTitle": "BDI-I UA",
+      "summary": "Українська версія BDI-I з локальним підрахунком балів і URL-перенесенням прогресу між пристроями.",
+      "category": "Депресія",
+      "locale": "uk-UA",
+      "estimatedMinutes": 8,
+      "publishStatus": "published"
+    }
+  ]
+}

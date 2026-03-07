@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psychometry.local/schemas/test-definition.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "slug",
+    "title",
+    "shortTitle",
+    "locale",
+    "category",
+    "publishStatus",
+    "summary",
+    "instructionsMarkdown",
+    "estimatedMinutes",
+    "source",
+    "scoring",
+    "questions",
+    "references"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "id": { "type": "string", "minLength": 1 },
+    "slug": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "shortTitle": { "type": "string", "minLength": 1 },
+    "locale": { "type": "string", "minLength": 1 },
+    "category": { "type": "string", "minLength": 1 },
+    "publishStatus": { "enum": ["draft", "published"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "instructionsMarkdown": { "type": "string", "minLength": 1 },
+    "warningMarkdown": { "type": "string" },
+    "draftNoticeMarkdown": { "type": "string" },
+    "estimatedMinutes": { "type": "integer", "minimum": 1 },
+    "source": {
+      "type": "object",
+      "required": ["kind", "name", "permissionStatus"],
+      "properties": {
+        "kind": { "enum": ["reference", "approved-publication"] },
+        "name": { "type": "string", "minLength": 1 },
+        "permissionStatus": { "enum": ["pending", "approved"] }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["type", "min", "max", "bands"],
+      "properties": {
+        "type": { "const": "sum" },
+        "min": { "type": "integer" },
+        "max": { "type": "integer" },
+        "bands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["min", "max", "label", "descriptionMarkdown"],
+            "properties": {
+              "min": { "type": "integer" },
+              "max": { "type": "integer" },
+              "label": { "type": "string", "minLength": 1 },
+              "descriptionMarkdown": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "prompt", "options"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "prompt": { "type": "string", "minLength": 1 },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["value", "label"],
+              "properties": {
+                "value": { "type": "integer" },
+                "label": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "url"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}
