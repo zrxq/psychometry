@@ -9,3 +9,4 @@
 - Delete unused or obsolete files when changes make them irrelevant, such as during refactors or feature removals.
 - Revert files only when the change is yours or the user explicitly requested the revert.
 - Moving, renaming, and restoring files is allowed.
+- When tools generate recurring local artifacts or debug outputs (for example Playwright snapshots, logs, screenshots, or similar scratch directories), handle them proactively: keep them out of commits, add the artifact path to `.gitignore` when appropriate, and verify `git status` is clean before finishing or committing.
