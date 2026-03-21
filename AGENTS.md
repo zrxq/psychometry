@@ -1,5 +1,7 @@
 # AGENTS.md
 
+[README.md](README.md) contains the project description.
+
 ## Git rules
 
 - Keep commits atomic: commit only the files you touched and list each path explicitly. For tracked files run `git commit -m "<scoped message>" -- path/to/file1 path/to/file2`. For brand-new files, use `git restore --staged :/ && git add "path/to/file1" "path/to/file2" && git commit -m "<scoped message>" -- path/to/file1 path/to/file2`.
