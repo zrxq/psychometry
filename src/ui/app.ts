@@ -1,3 +1,4 @@
+import { renderMarkdown } from "../lib/markdown";
 import { buildCatalogHref, buildTestHref, parseRoute } from "../lib/router";
 import {
   clampSessionState,
@@ -5,14 +6,19 @@ import {
   decodeSessionState,
   encodeSessionState,
 } from "../lib/session";
+import { shareTestLink } from "../lib/share";
 import { computeResult } from "../lib/scoring";
-import { renderMarkdown } from "../lib/markdown";
 import type {
   Catalog,
   CatalogEntry,
   SessionState,
   TestDefinition,
 } from "../types";
+
+interface ShareUiState {
+  message: string;
+  manualText: string | null;
+}
 
 export function createApp(root: HTMLElement): void {
   window.addEventListener("hashchange", renderCurrentRoute);
@@ -92,8 +98,8 @@ function renderCatalog(tests: CatalogEntry[]): string {
         <p class="eyebrow">Psychometry UA</p>
         <h1>Відкритий каталог психометричних тестів українською</h1>
         <p class="lead">
-          Статичний сайт з локальним підрахунком результатів, URL-перенесенням
-          прогресу та відкритим процесом рев'ю через GitHub.
+          Прості онлайн-опитувальники українською мовою з локальним підрахунком
+          результату і можливістю поділитися ним із фахівцем.
         </p>
       </section>
       <section class="grid">
@@ -115,34 +121,38 @@ function renderMissingTest(slug: string): string {
   `;
 }
 
-function renderTest(definition: TestDefinition, state: SessionState): string {
-  const result = computeResult(definition, state.answers);
-  const currentQuestion = definition.questions[state.currentIndex];
-  const progressMax = Math.max(definition.questions.length, 1);
-  const crisisFlag = state.answers[8] !== null && (state.answers[8] ?? 0) > 0;
-  const sourceLabel =
-    definition.source.permissionStatus === "approved"
-      ? "Текст дозволено до публікації"
-      : "Права на публікацію ще не підтверджені";
+function renderTest(
+  definition: TestDefinition,
+  state: SessionState,
+  shareUi: ShareUiState = { message: "", manualText: null },
+): string {
+  const isIntro = state.phase === "intro";
 
   return `
     <main class="shell shell-narrow">
-      <a class="backlink" href="${buildCatalogHref()}">До каталогу</a>
-      <section class="hero hero-compact">
+      <div class="test-toolbar">
+        <a class="backlink" href="${buildCatalogHref()}">До каталогу</a>
+      </div>
+      <section class="hero hero-compact ${isIntro ? "" : "hero-minimal"}">
         <p class="eyebrow">${definition.category}</p>
-        <div class="hero-headline">
-          <h1>${definition.title}</h1>
-          <span class="status status-${definition.publishStatus}">
-            ${definition.publishStatus === "published" ? "Опубліковано" : "Чернетка"}
-          </span>
-        </div>
-        <p class="lead">${definition.summary}</p>
+        <h1 class="test-title ${isIntro ? "" : "test-title-compact"}">${definition.title}</h1>
+        ${isIntro ? `<p class="lead">${definition.summary}</p>` : ""}
         <div class="meta-list">
           <span>${definition.estimatedMinutes} хв</span>
-          <span>${sourceLabel}</span>
         </div>
       </section>
+      ${renderPhase(definition, state, shareUi)}
+    </main>
+  `;
+}
 
+function renderPhase(
+  definition: TestDefinition,
+  state: SessionState,
+  shareUi: ShareUiState,
+): string {
+  if (definition.questions.length === 0) {
+    return `
       <section class="card prose">
         ${renderMarkdown(definition.instructionsMarkdown)}
         ${definition.warningMarkdown ? renderMarkdown(definition.warningMarkdown) : ""}
@@ -152,94 +162,189 @@ function renderTest(definition: TestDefinition, state: SessionState): string {
             : ""
         }
       </section>
-
-      ${
-        definition.questions.length === 0
-          ? `
-            <section class="card">
-              <h2>Інтерактивна форма ще не опублікована</h2>
-              <p>
-                Цей тест використовується як раннє джерело структури та метаданих.
-                Питання будуть додані після підтвердження прав на публікацію.
-              </p>
-            </section>
-          `
-          : `
-            <section class="card">
-              <div class="progress-header">
-                <h2>Питання ${state.currentIndex + 1} з ${definition.questions.length}</h2>
-                <p class="muted">Відповіді зберігаються в URL фрагменті.</p>
-              </div>
-              <progress value="${state.currentIndex + 1}" max="${progressMax}"></progress>
-              <div class="question-block">
-                <p class="question-title">${currentQuestion.prompt}</p>
-                <div class="option-list">
-                  ${currentQuestion.options
-                    .map(
-                      (option) => `
-                        <label class="option">
-                          <input
-                            type="radio"
-                            name="question-${currentQuestion.id}"
-                            value="${option.value}"
-                            ${state.answers[state.currentIndex] === option.value ? "checked" : ""}
-                          />
-                          <span>${option.label}</span>
-                        </label>
-                      `,
-                    )
-                    .join("")}
-                </div>
-              </div>
-              <div class="actions">
-                <button data-action="prev" ${state.currentIndex === 0 ? "disabled" : ""}>
-                  Назад
-                </button>
-                <button data-action="next">
-                  ${
-                    state.currentIndex === definition.questions.length - 1
-                      ? "До результату"
-                      : "Далі"
-                  }
-                </button>
-              </div>
-            </section>
-          `
-      }
-
       <section class="card">
-        <div class="result-headline">
-          <h2>Поточний результат</h2>
-          <button class="button button-secondary" data-action="copy-link">
-            Скопіювати URL для продовження
-          </button>
-        </div>
-        <p class="score">${result.total} / ${definition.scoring.max}</p>
-        <p class="muted">
-          Заповнено ${result.answeredCount} з ${definition.questions.length || 0}
+        <h2>Інтерактивна форма ще не опублікована</h2>
+        <p>
+          Цей тест використовується як раннє джерело структури та метаданих.
+          Питання будуть додані після підтвердження прав на публікацію.
         </p>
-        ${
-          crisisFlag
-            ? `
-              <div class="notice notice-urgent">
-                <p><strong>Важливо:</strong> ви відзначили наявність думок про самогубство.</p>
-                <p>
-                  Не лишайтеся з цим наодинці. Зверніться до близької людини, лікаря,
-                  психолога або до локальної служби невідкладної допомоги негайно.
-                </p>
-              </div>
-            `
-            : ""
-        }
-        ${
-          result.band
-            ? `<div class="prose">${renderMarkdown(result.band.descriptionMarkdown)}</div>`
-            : `<p class="muted">Діапазон інтерпретації буде показано після появи оцінки.</p>`
-        }
       </section>
+      ${renderReferencesCard(definition)}
+    `;
+  }
 
-      <section class="card">
-        <h2>Джерела</h2>
+  if (state.phase === "intro") {
+    return renderIntroPhase(definition);
+  }
+
+  if (state.phase === "result") {
+    return renderResultPhase(definition, state, shareUi);
+  }
+
+  return renderQuestionPhase(definition, state);
+}
+
+function renderIntroPhase(definition: TestDefinition): string {
+  return `
+    <section class="card intro-card prose">
+      <h2>Перед початком</h2>
+      <p>Оберіть одне твердження в кожному блоці, яке найточніше описує ваш стан.</p>
+      <p>Відповідайте, орієнтуючись на те, як ви почувалися останнім часом.</p>
+      ${
+        definition.warningMarkdown
+          ? `<div class="notice">${renderMarkdown(definition.warningMarkdown)}</div>`
+          : ""
+      }
+      ${
+        definition.draftNoticeMarkdown
+          ? `<div class="notice">${renderMarkdown(definition.draftNoticeMarkdown)}</div>`
+          : ""
+      }
+      <div class="actions actions-single">
+        <button data-action="start">Почати тест</button>
+      </div>
+    </section>
+    ${renderReferencesCard(definition, true)}
+  `;
+}
+
+function renderQuestionPhase(
+  definition: TestDefinition,
+  state: SessionState,
+): string {
+  const currentQuestion = definition.questions[state.currentIndex];
+  const selectedValue = state.answers[state.currentIndex];
+  const progressMax = Math.max(definition.questions.length, 1);
+
+  return `
+    <section class="card question-card">
+      <div class="progress-header">
+        <h2>Питання ${state.currentIndex + 1} з ${definition.questions.length}</h2>
+        <p class="muted">
+          ${state.currentIndex === 0 ? "Оберіть один варіант відповіді." : "Можна повернутися до попередніх відповідей."}
+        </p>
+      </div>
+      <progress value="${state.currentIndex + 1}" max="${progressMax}"></progress>
+      <div class="subtle-nav">
+        <button class="text-button" data-action="prev">
+          ${state.currentIndex === 0 ? "Назад" : "Попереднє питання"}
+        </button>
+      </div>
+      <div class="question-block">
+        <form>
+          <fieldset class="question-fieldset">
+            <legend class="question-title">${currentQuestion.prompt}</legend>
+            <div class="option-list">
+              ${currentQuestion.options
+                .map(
+                  (option) => `
+                    <label class="option">
+                      <input
+                        type="radio"
+                        name="question-${currentQuestion.id}"
+                        value="${option.value}"
+                        ${selectedValue === option.value ? "checked" : ""}
+                      />
+                      <span>${option.label}</span>
+                    </label>
+                  `,
+                )
+                .join("")}
+            </div>
+          </fieldset>
+        </form>
+      </div>
+      <div class="actions actions-single">
+        <button
+          data-action="next"
+          ${selectedValue === null ? "disabled" : ""}
+        >
+          ${
+            state.currentIndex === definition.questions.length - 1
+              ? "Завершити"
+              : "Далі"
+          }
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+function renderResultPhase(
+  definition: TestDefinition,
+  state: SessionState,
+  shareUi: ShareUiState,
+): string {
+  const result = computeResult(definition, state.answers);
+  const crisisFlag = state.answers[8] !== null && (state.answers[8] ?? 0) > 0;
+
+  return `
+    <section class="card">
+      <div class="result-headline">
+        <div>
+          <h2>Результат тесту</h2>
+          <p class="muted result-subtitle">
+            Заповнено ${result.answeredCount} з ${definition.questions.length}
+          </p>
+        </div>
+      </div>
+      <div class="share-feedback" aria-live="polite" data-share-feedback>
+        ${shareUi.message}
+      </div>
+      ${
+        shareUi.manualText
+          ? `
+            <div class="manual-share card-inset" data-share-manual>
+              <label for="share-text">Скопіюйте цей текст</label>
+              <input
+                id="share-text"
+                class="manual-share-input"
+                type="text"
+                readonly
+                value="${escapeAttribute(shareUi.manualText)}"
+              />
+            </div>
+          `
+          : ""
+      }
+      <p class="score">${result.total} / ${definition.scoring.max}</p>
+      ${
+        crisisFlag
+          ? `
+            <div class="notice notice-urgent">
+              <p><strong>Важливо:</strong> ви відзначили наявність думок про самогубство.</p>
+              <p>
+                Не лишайтеся з цим наодинці. Зверніться до близької людини, лікаря,
+                психолога або до локальної служби невідкладної допомоги негайно.
+              </p>
+            </div>
+          `
+          : ""
+      }
+      ${
+        result.band
+          ? `<div class="prose">${renderMarkdown(result.band.descriptionMarkdown)}</div>`
+          : `<p class="muted">Інтерпретація з'явиться після повного завершення тесту.</p>`
+      }
+      <div class="actions result-actions">
+        <button class="button share-button" data-action="share">
+          ${renderShareIcon()}
+          <span>Надіслати фахівцю</span>
+        </button>
+      </div>
+    </section>
+    ${renderReferencesCard(definition, true)}
+  `;
+}
+
+function renderReferencesCard(
+  definition: TestDefinition,
+  collapsed = false,
+): string {
+  return `
+    <section class="card">
+      <details class="details-panel" ${collapsed ? "" : "open"}>
+        <summary>Джерела та деталі</summary>
         <ul class="reference-list">
           ${definition.references
             .map(
@@ -248,14 +353,14 @@ function renderTest(definition: TestDefinition, state: SessionState): string {
                   <a href="${reference.url}" target="_blank" rel="noreferrer">
                     ${reference.title}
                   </a>
-                  ${reference.note ? `<span class="muted"> ${reference.note}</span>` : ""}
+                  ${reference.note ? `<span class="muted">${reference.note}</span>` : ""}
                 </li>
               `,
             )
             .join("")}
         </ul>
-      </section>
-    </main>
+      </details>
+    </section>
   `;
 }
 
@@ -271,40 +376,100 @@ function wireTestInteractions(
     window.location.hash = buildTestHref(definition.slug, token).slice(1);
   };
 
+  root.querySelector<HTMLElement>('[data-action="start"]')?.addEventListener("click", () => {
+    state.phase = "questionnaire";
+    rerender();
+  });
+
   root.querySelectorAll<HTMLInputElement>('input[type="radio"]').forEach((input) => {
     input.addEventListener("change", () => {
       const value = Number(input.value);
       state.answers[state.currentIndex] = value;
+      state.phase = "questionnaire";
       rerender();
     });
   });
 
   root.querySelector<HTMLElement>('[data-action="prev"]')?.addEventListener("click", () => {
-    state.currentIndex = Math.max(state.currentIndex - 1, 0);
+    if (state.currentIndex === 0) {
+      state.phase = "intro";
+    } else {
+      state.currentIndex = Math.max(state.currentIndex - 1, 0);
+      state.phase = "questionnaire";
+    }
     rerender();
   });
 
   root.querySelector<HTMLElement>('[data-action="next"]')?.addEventListener("click", () => {
+    if (state.answers[state.currentIndex] === null) {
+      return;
+    }
+
+    if (state.currentIndex === definition.questions.length - 1) {
+      state.phase = "result";
+      rerender();
+      return;
+    }
+
     state.currentIndex = Math.min(
       state.currentIndex + 1,
       Math.max(definition.questions.length - 1, 0),
     );
+    state.phase = "questionnaire";
     rerender();
   });
 
-  root
-    .querySelector<HTMLElement>('[data-action="copy-link"]')
-    ?.addEventListener("click", async () => {
-      const token = encodeSessionState(state);
-      const href = `${window.location.origin}${window.location.pathname}${buildTestHref(
-        definition.slug,
-        token,
-      )}`;
+  root.querySelector<HTMLElement>('[data-action="share"]')?.addEventListener("click", async () => {
+    const href = buildAbsoluteTestHref(definition.slug, state);
+    const shareResult = await shareTestLink(definition.title, href);
 
-      try {
-        await navigator.clipboard.writeText(href);
-      } catch {
-        window.prompt("Скопіюйте URL для продовження", href);
-      }
+    if (shareResult.outcome === "failed") {
+      return;
+    }
+
+    root.innerHTML = renderTest(definition, state, {
+      message: shareResult.message,
+      manualText: shareResult.outcome === "manual" ? shareResult.text : null,
     });
+    wireTestInteractions(root, definition, state);
+
+    const manualInput = root.querySelector<HTMLInputElement>("#share-text");
+    manualInput?.focus();
+    manualInput?.select();
+  });
+}
+
+function buildAbsoluteTestHref(slug: string, state: SessionState): string {
+  const token = encodeSessionState(state);
+  return `${window.location.origin}${window.location.pathname}${buildTestHref(slug, token)}`;
+}
+
+function renderShareIcon(): string {
+  return `
+    <svg
+      class="share-icon"
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M15 5l4 4m0 0-4 4m4-4H9a4 4 0 0 0-4 4v4"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+      />
+    </svg>
+  `;
+}
+
+function escapeAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

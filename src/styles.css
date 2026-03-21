@@ -38,8 +38,17 @@ a {
 }
 
 button,
-input {
+input,
+summary {
   font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid rgba(30, 92, 75, 0.35);
+  outline-offset: 3px;
 }
 
 .shell {
@@ -52,6 +61,10 @@ input {
   width: min(820px, calc(100% - 32px));
 }
 
+.test-toolbar {
+  margin-bottom: 8px;
+}
+
 .hero {
   padding: 32px;
   margin-bottom: 24px;
@@ -59,6 +72,10 @@ input {
 
 .hero-compact {
   padding: 16px 0 24px;
+}
+
+.hero-minimal {
+  padding-bottom: 16px;
 }
 
 .eyebrow {
@@ -83,6 +100,15 @@ h1 {
   max-width: 12ch;
 }
 
+.test-title {
+  font-size: clamp(2rem, 7vw, 3.4rem);
+}
+
+.test-title-compact {
+  font-size: clamp(1.45rem, 4.8vw, 2rem);
+  max-width: 16ch;
+}
+
 h2 {
   font-size: 1.5rem;
 }
@@ -93,6 +119,10 @@ h2 {
   color: var(--muted);
   font-size: 1.08rem;
   line-height: 1.6;
+}
+
+.hero-minimal .lead {
+  display: none;
 }
 
 .grid {
@@ -113,6 +143,10 @@ h2 {
 .card h2,
 .card p {
   margin-bottom: 0;
+}
+
+.card + .card {
+  margin-top: 18px;
 }
 
 .card-meta,
@@ -184,12 +218,21 @@ button {
   text-decoration: none;
   background: var(--accent);
   color: #fbfaf8;
+  font-weight: 700;
   transition: transform 120ms ease, opacity 120ms ease;
 }
 
 .button-secondary {
   background: #ece5da;
   color: var(--text);
+}
+
+.text-button {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 button:disabled {
@@ -202,18 +245,42 @@ button:hover {
   transform: translateY(-1px);
 }
 
+.text-button:hover {
+  transform: none;
+}
+
 .backlink {
-  display: inline-block;
-  margin-bottom: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
   text-decoration: none;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.backlink::before {
+  content: "<";
+  font-size: 0.9em;
 }
 
 .question-block {
   margin-top: 20px;
 }
 
+.subtle-nav {
+  margin-top: 12px;
+}
+
+.question-fieldset {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
 .question-title {
+  margin: 0;
   font-size: 1.12rem;
   font-weight: 700;
 }
@@ -226,27 +293,88 @@ button:hover {
 
 .option {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px;
-  align-items: start;
+  grid-template-columns: 24px 1fr;
+  gap: 14px;
+  align-items: center;
   border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   background: var(--surface-strong);
+}
+
+.option input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
 }
 
 .option span {
   display: block;
-  padding-top: 2px;
+  line-height: 1.45;
 }
 
 .actions {
   margin-top: 24px;
 }
 
+.actions-single {
+  justify-content: flex-start;
+}
+
+.result-actions {
+  justify-content: flex-end;
+}
+
 .result-headline {
   row-gap: 16px;
   margin-bottom: 20px;
+}
+
+.result-subtitle {
+  margin-top: 6px;
+}
+
+.share-button {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding-inline: 22px;
+}
+
+.share-icon {
+  flex: none;
+}
+
+.share-feedback {
+  min-height: 1.5em;
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.card-inset {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface-strong);
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+
+.manual-share label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.manual-share-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  color: var(--text);
 }
 
 .score {
@@ -274,6 +402,34 @@ button:hover {
 
 .prose ul {
   padding-left: 20px;
+}
+
+.prose p + p,
+.prose ul + p,
+.prose p + ul {
+  margin-top: 14px;
+}
+
+.details-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.details-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.details-panel summary::after {
+  content: "+";
+  float: right;
+  color: var(--accent);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.details-panel[open] summary::after {
+  content: "-";
 }
 
 .reference-list {
@@ -340,8 +496,21 @@ progress {
     margin-top: 20px;
   }
 
+  .share-button,
+  .actions button {
+    width: 100%;
+  }
+
+  .test-title {
+    font-size: clamp(1.55rem, 7.2vw, 2.1rem);
+  }
+
+  .test-title-compact {
+    font-size: clamp(1.1rem, 5.1vw, 1.4rem);
+  }
+
   h1 {
-    font-size: clamp(2.2rem, 11vw, 2.8rem);
+    font-size: clamp(1.8rem, 9vw, 2.5rem);
     overflow-wrap: anywhere;
   }
 }

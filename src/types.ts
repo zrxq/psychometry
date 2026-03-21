@@ -69,9 +69,12 @@ export interface TestDefinition {
   references: TestReference[];
 }
 
+export type SessionPhase = "intro" | "questionnaire" | "result";
+
 export interface SessionState {
-  version: 1;
+  version: 2;
   testId: string;
+  phase: SessionPhase;
   currentIndex: number;
   answers: Array<number | null>;
 }
